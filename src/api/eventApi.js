@@ -36,3 +36,9 @@ export const deleteEvent = (id) =>
 // Requires authenticated owner of the event
 export const getEventParticipants = (eventId) =>
   api.get(`/events/${eventId}/participants`)
+
+// POST /events/{eventId}/notify  → { sent: number }
+// phase: 'PRE' (lembrete pré-evento) | 'POST' (agradecimento pós-evento)
+// customMessage: texto opcional do organizador. Requires authenticated owner.
+export const notifyParticipants = (eventId, phase, customMessage) =>
+  api.post(`/events/${eventId}/notify`, { phase, customMessage })

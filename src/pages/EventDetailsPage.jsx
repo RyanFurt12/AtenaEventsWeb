@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { getEvent } from '../api/eventApi'
 import { isParticipating, toggleParticipation } from '../api/participationApi'
 import { getComments, createComment, updateComment, deleteComment } from '../api/commentApi'
-import { IconBack, IconHeart, IconCalendar } from '../components/Icons'
+import { IconBack, IconPerson, IconCalendar } from '../components/Icons'
 import Spinner from '../components/Spinner'
 import GuestJoinModal from '../components/GuestJoinModal'
 import UpgradeAccountModal from '../components/UpgradeAccountModal'
@@ -288,6 +288,8 @@ export default function EventDetailsPage() {
   }
 
   const isOwner = event.ownerId === user?.id
+  // Comentários ficam ocultos até o usuário participar (o dono sempre vê os do seu evento).
+  const canSeeComments = participating || isOwner
   const imageUrl = event.imageBase64 || `https://picsum.photos/1200/400?random=${id}`
 
   return (
@@ -305,20 +307,10 @@ export default function EventDetailsPage() {
         </button>
 
         <button
-          className="event-details-hero-fav"
-          id="btn-participate-event"
-          onClick={handleToggleParticipation}
-          style={{ color: participating ? '#e11d48' : undefined }}
-          title={participating ? 'Cancelar participação' : 'Participar'}
-        >
-          <IconHeart filled={participating} />
-        </button>
-
-        <button
           id="btn-share-event"
           onClick={handleShare}
           style={{
-            position: 'absolute', top: 14, right: 62,
+            position: 'absolute', top: 14, right: 14,
             width: 40, height: 40,
             background: 'rgba(255,255,255,.8)',
             backdropFilter: 'blur(8px)',
@@ -386,14 +378,23 @@ export default function EventDetailsPage() {
       <p className="event-details-desc">{event.description}</p>
 
       <div className="event-details-meta-row">
-        <IconHeart filled style={{ color: '#e11d48' }} />
-        <span style={{ color: '#e11d48', fontWeight: 600 }}>{participantsCount} Participantes</span>
+        <IconPerson />
+        <span style={{ fontWeight: 600 }}>{participantsCount} Participantes</span>
       </div>
 
       <div className="event-details-meta-row" style={{ marginBottom: '24px' }}>
         <IconCalendar />
         <span>{formatDate(event.date)}</span>
       </div>
+
+      <button
+        className={participating ? 'btn-secondary' : 'btn-primary'}
+        id="btn-participate-event"
+        onClick={handleToggleParticipation}
+        style={{ width: 'auto', padding: '12px 32px', marginBottom: '24px', fontSize: '15px' }}
+      >
+        {participating ? 'Cancelar participação' : 'Participar'}
+      </button>
 
       {/* Criador do evento */}
       <div className="event-owner-row">
@@ -408,7 +409,24 @@ export default function EventDetailsPage() {
         </div>
       </div>
 
+      {/* Comentários só ficam disponíveis após participar */}
+      {!canSeeComments && (
+        <div
+          style={{
+            background: 'var(--surface)',
+            borderRadius: 'var(--radius-md)',
+            padding: '20px',
+            textAlign: 'center',
+            color: 'var(--text-secondary)',
+            fontSize: '14px',
+          }}
+        >
+          Participe do evento para ver e deixar comentários.
+        </div>
+      )}
+
       {/* Tab bar */}
+      {canSeeComments && (
       <div className="tab-bar">
         <button
           className={`tab-item${tab === 'comments' ? ' active' : ''}`}
@@ -418,8 +436,9 @@ export default function EventDetailsPage() {
           Comentários ({comments.length})
         </button>
       </div>
+      )}
 
-      {tab === 'comments' && (
+      {canSeeComments && tab === 'comments' && (
         <div className="comment-list fade-in">
           {/* Comment input — three states based on auth */}
           {!user && (

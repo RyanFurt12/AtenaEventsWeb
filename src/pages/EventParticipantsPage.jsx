@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getEvent, getEventParticipants } from '../api/eventApi'
-import { IconBack, IconSearch } from '../components/Icons'
+import { getEvent, getEventParticipants, notifyParticipants } from '../api/eventApi'
+import { IconBack, IconSearch, IconBell } from '../components/Icons'
 import Spinner from '../components/Spinner'
 import './EventParticipantsPage.css'
 import './auth.css'
@@ -51,6 +51,45 @@ function ParticipantCard({ participant }) {
   )
 }
 
+function NotifyModal({ phase, sending, onCancel, onConfirm }) {
+  const [message, setMessage] = useState('')
+  const isPre = phase === 'PRE'
+
+  return (
+    <div className="dialog-backdrop">
+      <div className="dialog-card">
+        <h2 className="dialog-title">
+          {isPre ? 'Enviar lembrete (pré-evento)' : 'Enviar agradecimento (pós-evento)'}
+        </h2>
+        <p className="dialog-body">
+          O email será enviado a todos os participantes com email cadastrado. Convidados sem
+          email não recebem. Você pode adicionar uma mensagem personalizada (opcional).
+        </p>
+        <textarea
+          className="input-field"
+          placeholder="Mensagem do organizador (opcional)..."
+          value={message}
+          onChange={e => setMessage(e.target.value)}
+          rows={4}
+          disabled={sending}
+          style={{ width: '100%', resize: 'vertical', marginBottom: '8px' }}
+        />
+        <div className="dialog-actions">
+          <button className="btn-text" onClick={onCancel} disabled={sending}>Cancelar</button>
+          <button
+            className="btn-primary"
+            style={{ width: 'auto', padding: '10px 24px' }}
+            onClick={() => onConfirm(message)}
+            disabled={sending}
+          >
+            {sending ? <Spinner size={14} color="#fff" /> : 'Enviar email'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function EventParticipantsPage() {
   const { eventId } = useParams()
   const navigate = useNavigate()
@@ -60,6 +99,9 @@ export default function EventParticipantsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
+  const [notifyPhase, setNotifyPhase] = useState(null) // 'PRE' | 'POST' | null
+  const [sending, setSending] = useState(false)
+  const [notifyFeedback, setNotifyFeedback] = useState(null)
 
   useEffect(() => {
     async function load() {
@@ -90,6 +132,32 @@ export default function EventParticipantsPage() {
     )
   }, [participants, search])
 
+  async function handleSendNotification(customMessage) {
+    const phase = notifyPhase
+    setSending(true)
+    try {
+      const { sent } = await notifyParticipants(eventId, phase, customMessage)
+      // Marca a fase como enviada localmente (sem refetch)
+      setEvent(prev => ({
+        ...prev,
+        ...(phase === 'PRE'
+          ? { preEventNotifiedAt: new Date().toISOString() }
+          : { postEventNotifiedAt: new Date().toISOString() }),
+      }))
+      setNotifyFeedback(
+        sent > 0
+          ? `Email enviado a ${sent} participante${sent === 1 ? '' : 's'}.`
+          : 'Nenhum participante com email para notificar.'
+      )
+      setNotifyPhase(null)
+    } catch (err) {
+      const msg = err?.response?.data?.message || err.message || 'Erro ao enviar emails.'
+      setNotifyFeedback(msg)
+    } finally {
+      setSending(false)
+    }
+  }
+
   if (loading) return <Spinner size={48} />
 
   if (error) {
@@ -99,6 +167,13 @@ export default function EventParticipantsPage() {
       </div>
     )
   }
+
+  const now = new Date()
+  const eventDate = event?.date ? new Date(event.date) : null
+  const isFuture = eventDate ? eventDate > now : false
+  const isPast = eventDate ? eventDate < now : false
+  const preSentAt = event?.preEventNotifiedAt
+  const postSentAt = event?.postEventNotifiedAt
 
   return (
     <div className="participants-container">
@@ -122,6 +197,54 @@ export default function EventParticipantsPage() {
         </span>
       </div>
 
+      {/* Notificações por email — pré e pós evento, uma vez cada */}
+      <div className="notify-panel">
+        <div className="notify-panel-header">
+          <IconBell />
+          <span>Notificar participantes por email</span>
+        </div>
+
+        <div className="notify-actions">
+          <div className="notify-action">
+            {preSentAt ? (
+              <span className="notify-sent">✓ Lembrete enviado em {formatDate(preSentAt)}</span>
+            ) : (
+              <button
+                className="btn-primary"
+                id="btn-notify-pre"
+                style={{ width: 'auto', padding: '10px 20px', fontSize: '13px' }}
+                disabled={!isFuture}
+                onClick={() => { setNotifyFeedback(null); setNotifyPhase('PRE') }}
+                title={isFuture ? '' : 'Disponível apenas antes da data do evento'}
+              >
+                Enviar lembrete (pré-evento)
+              </button>
+            )}
+          </div>
+
+          <div className="notify-action">
+            {postSentAt ? (
+              <span className="notify-sent">✓ Agradecimento enviado em {formatDate(postSentAt)}</span>
+            ) : (
+              <button
+                className="btn-primary"
+                id="btn-notify-post"
+                style={{ width: 'auto', padding: '10px 20px', fontSize: '13px' }}
+                disabled={!isPast}
+                onClick={() => { setNotifyFeedback(null); setNotifyPhase('POST') }}
+                title={isPast ? '' : 'Disponível apenas após a data do evento'}
+              >
+                Enviar agradecimento (pós-evento)
+              </button>
+            )}
+          </div>
+        </div>
+
+        {notifyFeedback && (
+          <p className="notify-feedback">{notifyFeedback}</p>
+        )}
+      </div>
+
       <div className="participants-search-wrap">
         <IconSearch />
         <input
@@ -143,6 +266,15 @@ export default function EventParticipantsPage() {
             <ParticipantCard key={p.userId} participant={p} />
           ))}
         </div>
+      )}
+
+      {notifyPhase && (
+        <NotifyModal
+          phase={notifyPhase}
+          sending={sending}
+          onCancel={() => setNotifyPhase(null)}
+          onConfirm={handleSendNotification}
+        />
       )}
     </div>
   )
