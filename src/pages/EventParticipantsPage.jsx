@@ -132,6 +132,19 @@ export default function EventParticipantsPage() {
     )
   }, [participants, search])
 
+  function handleNotifyClick(phase) {
+    const blockReason =
+      phase === 'PRE'
+        ? (isFuture ? null : 'O lembrete pré-evento só pode ser enviado antes da data do evento.')
+        : (isPast   ? null : 'O agradecimento pós-evento só pode ser enviado após a data do evento.')
+    if (blockReason) {
+      setNotifyFeedback(blockReason)
+      return
+    }
+    setNotifyFeedback(null)
+    setNotifyPhase(phase)
+  }
+
   async function handleSendNotification(customMessage) {
     const phase = notifyPhase
     setSending(true)
@@ -210,11 +223,10 @@ export default function EventParticipantsPage() {
               <span className="notify-sent">✓ Lembrete enviado em {formatDate(preSentAt)}</span>
             ) : (
               <button
-                className="btn-primary"
+                className={`btn-primary${isFuture ? '' : ' btn-primary-muted'}`}
                 id="btn-notify-pre"
                 style={{ width: 'auto', padding: '10px 20px', fontSize: '13px' }}
-                disabled={!isFuture}
-                onClick={() => { setNotifyFeedback(null); setNotifyPhase('PRE') }}
+                onClick={() => handleNotifyClick('PRE')}
                 title={isFuture ? '' : 'Disponível apenas antes da data do evento'}
               >
                 Enviar lembrete (pré-evento)
@@ -227,11 +239,10 @@ export default function EventParticipantsPage() {
               <span className="notify-sent">✓ Agradecimento enviado em {formatDate(postSentAt)}</span>
             ) : (
               <button
-                className="btn-primary"
+                className={`btn-primary${isPast ? '' : ' btn-primary-muted'}`}
                 id="btn-notify-post"
                 style={{ width: 'auto', padding: '10px 20px', fontSize: '13px' }}
-                disabled={!isPast}
-                onClick={() => { setNotifyFeedback(null); setNotifyPhase('POST') }}
+                onClick={() => handleNotifyClick('POST')}
                 title={isPast ? '' : 'Disponível apenas após a data do evento'}
               >
                 Enviar agradecimento (pós-evento)
@@ -250,7 +261,7 @@ export default function EventParticipantsPage() {
         <input
           className="participants-search-input"
           type="text"
-          placeholder="Buscar por nome ou email..."
+          placeholder="Buscar por nome..."
           value={search}
           onChange={e => setSearch(e.target.value)}
         />

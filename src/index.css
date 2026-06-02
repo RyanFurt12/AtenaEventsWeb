@@ -102,6 +102,31 @@ img { display: block; max-width: 100%; }
 
 .btn-primary:active { transform: translateY(0); }
 
+.btn-primary:disabled {
+  opacity: .5;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary:disabled:hover {
+  background: var(--primary);
+  box-shadow: none;
+  transform: none;
+}
+
+.btn-primary-muted {
+  opacity: .55;
+  box-shadow: none;
+  cursor: help;
+}
+
+.btn-primary-muted:hover {
+  background: var(--primary);
+  box-shadow: none;
+  transform: none;
+}
+
 .btn-outline {
   display: flex;
   align-items: center;
