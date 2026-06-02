@@ -1,32 +1,6 @@
 import { useRef } from 'react'
 import Spinner from './Spinner'
-
-function compressImage(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const img = new Image()
-      img.onload = () => {
-        const MAX_W = 1200
-        const MAX_H = 500
-        let { width, height } = img
-        const ratio = Math.min(MAX_W / width, MAX_H / height, 1)
-        width = Math.round(width * ratio)
-        height = Math.round(height * ratio)
-
-        const canvas = document.createElement('canvas')
-        canvas.width = width
-        canvas.height = height
-        canvas.getContext('2d').drawImage(img, 0, 0, width, height)
-        resolve(canvas.toDataURL('image/jpeg', 0.82))
-      }
-      img.onerror = reject
-      img.src = e.target.result
-    }
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
+import { compressImage } from '../utils/compressImage'
 
 export default function ImagePicker({ imageBase64, onChange, loading, id = 'btn-pick-image' }) {
   const fileInputRef = useRef(null)

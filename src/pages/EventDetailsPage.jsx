@@ -8,6 +8,7 @@ import { IconBack, IconPerson, IconCalendar } from '../components/Icons'
 import Spinner from '../components/Spinner'
 import GuestJoinModal from '../components/GuestJoinModal'
 import UpgradeAccountModal from '../components/UpgradeAccountModal'
+import Whiteboard from '../components/Whiteboard/Whiteboard'
 import './EventDetailsPage.css'
 
 function formatDate(iso) {
@@ -408,6 +409,9 @@ export default function EventDetailsPage() {
           <p className="event-owner-name">{event.ownerName}</p>
         </div>
       </div>
+
+      {/* Quadro branco interativo — dono ativa; participantes (conta completa) colam post-its */}
+      <Whiteboard eventId={id} eventTitle={event.title} isOwner={isOwner} participating={participating} />
 
       {/* Comentários só ficam disponíveis após participar */}
       {!canSeeComments && (
